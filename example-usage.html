@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hotel Landing Page - Refactored</title>
+    
+    <!-- Include external dependencies first -->
+    <script src="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/de.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/fr.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/it.min.js"></script>
+    
+    <!-- Include CSS files -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+</head>
+<body>
+    <!-- Your HTML content here -->
+    
+    <!-- Gallery data script - this should contain your JSON data -->
+    <script id="gallery-data" type="application/json">
+        [
+            {
+                "topicname": "Summer",
+                "galleryname": "Summer Gallery",
+                "images": {
+                    "summer": ["image1.jpg", "image2.jpg"],
+                    "winter": ["winter1.jpg", "winter2.jpg"]
+                },
+                "heroImages": {
+                    "summer": "hero-summer.jpg",
+                    "winter": "hero-winter.jpg"
+                },
+                "quoteImages": {
+                    "summer": "quote-summer.jpg",
+                    "winter": "quote-winter.jpg"
+                }
+            }
+        ]
+    </script>
+    
+    <!-- Load the refactored scripts in order -->
+    <!-- Forms, Booking, Localization functionality -->
+    <script src="script-forms-booking.js"></script>
+    
+    <!-- Gallery and Visual functionality -->
+    <script src="script-gallery-visual.js"></script>
+    
+</body>
+</html>
