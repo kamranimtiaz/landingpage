@@ -93,7 +93,31 @@ function tCount(nounKey, count) {
 }
 
 function personsSummary(adults, children) {
-  return tCount("adults", adults) + ", " + tCount("children", children);
+  const adultsText = tCount("adults", adults);
+  
+  // Only include children text if there are children (handle null/undefined/negative)
+  if (children && children > 0) {
+    const childrenText = tCount("children", children);
+    return adultsText + ", " + childrenText;
+  }
+  
+  // Return only adults text when no children
+  return adultsText;
+}
+
+// Alternative version with more explicit logic:
+function personsSummaryDetailed(adults, children) {
+  const parts = [];
+  
+  // Always include adults
+  parts.push(tCount("adults", adults));
+  
+  // Only include children if count > 0
+  if (children && children > 0) {
+    parts.push(tCount("children", children));
+  }
+  
+  return parts.join(", ");
 }
 
 // Flatpickr Locale-Hilfen
@@ -262,16 +286,18 @@ class GalleryDataParser {
       const summaryEl = item.querySelector("[data-source-summary]");
       const heroTitleEl = item.querySelector("[data-source-header-title]");
 
-      if(headingEl) {
+      if (headingEl) {
         topic.heading = headingEl.getAttribute("data-source-heading");
       }
 
-      if(summaryEl) {
+      if (summaryEl) {
         topic.summary = summaryEl.getAttribute("data-source-summary");
       }
 
-      if(heroTitleEl) {
-        topic.headerTitle = heroTitleEl.getAttribute("data-source-header-title");
+      if (heroTitleEl) {
+        topic.headerTitle = heroTitleEl.getAttribute(
+          "data-source-header-title"
+        );
       }
 
       // Parse gallery images (existing functionality)
@@ -1221,9 +1247,11 @@ class TopicRenderer {
 class TopicContentRenderer {
   constructor(jsonData) {
     this.data = jsonData;
-    this.headingElement = document.querySelector('[data-topic-heading]');
-    this.summaryElement = document.querySelector('[data-topic-summary]');
-    this.headerTitleElement = document.querySelector('[data-topic-header-title]');
+    this.headingElement = document.querySelector("[data-topic-heading]");
+    this.summaryElement = document.querySelector("[data-topic-summary]");
+    this.headerTitleElement = document.querySelector(
+      "[data-topic-header-title]"
+    );
 
     this.currentTopic = null;
     this.setupTopicChangeListener();
@@ -1237,13 +1265,13 @@ class TopicContentRenderer {
   }
 
   updateContent(topicName) {
-    const topicData = this.data.find(topic => topic.topicname === topicName);
-    
+    const topicData = this.data.find((topic) => topic.topicname === topicName);
+
     if (topicData) {
       if (this.headingElement && topicData.heading) {
         this.headingElement.innerHTML = topicData.heading;
       }
-      
+
       if (this.summaryElement && topicData.summary) {
         this.summaryElement.innerHTML = topicData.summary;
       }
@@ -1251,7 +1279,7 @@ class TopicContentRenderer {
       if (this.headerTitleElement && topicData.headerTitle) {
         this.headerTitleElement.innerHTML = topicData.headerTitle;
       }
-      
+
       this.currentTopic = topicName;
       console.log(`Updated topic content for: ${topicName}`, topicData);
     }
@@ -1721,6 +1749,8 @@ document.addEventListener("DOMContentLoaded", function () {
               adults: heroAdultsCount,
               children: heroChildrenCount,
             };
+
+            // Update form date
             if (formDateInstance) {
               formDateInstance.setDate(window.__heroData.dates, false);
               const fancy = formatFancyRange(
@@ -1728,65 +1758,91 @@ document.addEventListener("DOMContentLoaded", function () {
                 formDateInstance
               );
               const tech = formatTechnicalRange(window.__heroData.dates);
+
               const formDateVisible = document.querySelector(
                 '.form_picker-date[data-picker="date-text-form"]'
               );
               const formDateHidden = document.querySelector(
                 '[data-picker="date-hidden-form"]'
               );
-              formDateVisible.value = fancy || "";
+
+              if (formDateVisible) formDateVisible.value = fancy || "";
               if (formDateHidden) formDateHidden.value = tech;
             }
+
+            // Transfer adults and children counts
             formAdultsCount = heroAdultsCount;
             formChildrenCount = clampChildrenCount(heroChildrenCount);
+
+            // Update form persons display
             const pCont = document.querySelector(".form_picker-persons");
             if (pCont) {
-              const w = pCont.querySelectorAll(".form_picker-persons-wrapper");
-              if (w.length >= 2) {
-                const aWrap = w[0];
-                const cWrap = w[1];
-                const formAdultsText = aWrap.querySelector(
-                  '[data-counter="adults-text-form"]'
+              // Update adults
+              const formAdultsText = pCont.querySelector(
+                '[data-counter*="adults"]'
+              );
+              if (formAdultsText) {
+                const valA = tCount("adults", formAdultsCount);
+                if (formAdultsText.value !== undefined) {
+                  formAdultsText.value = valA;
+                } else {
+                  formAdultsText.textContent = valA;
+                }
+
+                // Update adults minus button state
+                const aWrap = formAdultsText.closest(
+                  ".form_picker-persons-wrapper"
                 );
-                const formChildsText = cWrap.querySelector(
-                  '[data-counter="childs-text-form"]'
-                );
-                if (formAdultsText) {
-                  const valA = tCount("adults", formAdultsCount);
-                  if (formAdultsText.value !== undefined)
-                    formAdultsText.value = valA;
-                  else formAdultsText.textContent = valA;
-                  const minusBA = aWrap.querySelector(
+                if (aWrap) {
+                  const minusBtn = aWrap.querySelector(
                     '[data-controls="minus"]'
                   );
-                  if (minusBA) {
-                    if (formAdultsCount === 1)
-                      minusBA.classList.add("is-disabled");
-                    else minusBA.classList.remove("is-disabled");
+                  if (minusBtn) {
+                    if (formAdultsCount === 1) {
+                      minusBtn.classList.add("is-disabled");
+                    } else {
+                      minusBtn.classList.remove("is-disabled");
+                    }
                   }
                 }
-                if (formChildsText) {
-                  const valC = tCount("children", formChildrenCount);
-                  if (formChildsText.value !== undefined)
-                    formChildsText.value = valC;
-                  else formChildsText.textContent = valC;
-                  const minusBC = cWrap.querySelector(
+              }
+
+              // Update children (only if children elements exist)
+              const formChildsText = pCont.querySelector(
+                '[data-counter*="child"]'
+              );
+              if (formChildsText) {
+                const valC = tCount("children", formChildrenCount);
+                if (formChildsText.value !== undefined) {
+                  formChildsText.value = valC;
+                } else {
+                  formChildsText.textContent = valC;
+                }
+
+                // Update children minus button state
+                const cWrap = formChildsText.closest(
+                  ".form_picker-persons-wrapper"
+                );
+                if (cWrap) {
+                  const minusBtn = cWrap.querySelector(
                     '[data-controls="minus"]'
                   );
-                  if (minusBC) {
-                    if (formChildrenCount === 0)
-                      minusBC.classList.add("is-disabled");
-                    else minusBC.classList.remove("is-disabled");
+                  if (minusBtn) {
+                    if (formChildrenCount === 0) {
+                      minusBtn.classList.add("is-disabled");
+                    } else {
+                      minusBtn.classList.remove("is-disabled");
+                    }
                   }
-                  // Plus/Minus-State für Formular-Kinderreihe aktualisieren
-                  updateChildPlusMinusState(cWrap, formChildrenCount);
-                  // Plus/Minus-State für Formular-Kinderreihe aktualisieren
+
+                  // Update children-specific functionality
                   updateChildPlusMinusState(cWrap, formChildrenCount);
                 }
               }
             }
+
+            // Update nights display and child age items
             updateNightsDisplay(heroSelectedDates);
-            // Nach dem Transfer Altersfelder im Formular updaten
             updateChildAgeItems(formChildrenCount);
           }
         });
@@ -1872,80 +1928,163 @@ document.addEventListener("DOMContentLoaded", function () {
   (function initFormPersons() {
     const pCont = document.querySelector(".form_picker-persons");
     if (!pCont) return;
-    const w = pCont.querySelectorAll(".form_picker-persons-wrapper");
-    if (w.length < 2) return;
-    const aWrap = w[0];
-    const cWrap = w[1];
-    const formAdultsText = aWrap.querySelector(
-      '[data-counter="adults-text-form"]'
-    );
-    const formChildsText = cWrap.querySelector(
-      '[data-counter="childs-text-form"]'
-    );
-    if (formAdultsText) {
-      const valA = tCount("adults", 2);
-      if (formAdultsText.value !== undefined) formAdultsText.value = valA;
-      else formAdultsText.textContent = valA;
+
+    // Find all person wrappers
+    const allWrappers = pCont.querySelectorAll(".form_picker-persons-wrapper");
+    if (allWrappers.length === 0) return;
+
+    // Initialize adults functionality - always try to find it
+    let aWrap = null;
+    let formAdultsText = null;
+
+    // Look for adults wrapper by finding the one with adults counter
+    for (let wrapper of allWrappers) {
+      const counterEl = wrapper.querySelector('[data-counter*="adults"]');
+      if (counterEl) {
+        aWrap = wrapper;
+        formAdultsText = counterEl;
+        break;
+      }
     }
-    if (formChildsText) {
-      const valC = tCount("children", 0);
-      if (formChildsText.value !== undefined) formChildsText.value = valC;
-      else formChildsText.textContent = valC;
+
+    // Initialize children functionality - only if present
+    let cWrap = null;
+    let formChildsText = null;
+
+    // Look for children wrapper by finding the one with children/childs counter
+    for (let wrapper of allWrappers) {
+      const counterEl = wrapper.querySelector('[data-counter*="child"]');
+      if (counterEl) {
+        cWrap = wrapper;
+        formChildsText = counterEl;
+        break;
+      }
     }
-    const aCtrls = aWrap.querySelectorAll("[data-controls]");
-    aCtrls.forEach(function (ctrl) {
-      ctrl.addEventListener("click", function () {
-        const t = ctrl.getAttribute("data-controls");
-        if (t === "plus") formAdultsCount++;
-        else if (t === "minus" && formAdultsCount > 1) formAdultsCount--;
-        const valA = tCount("adults", formAdultsCount);
-        if (formAdultsText) {
-          if (formAdultsText.value !== undefined) formAdultsText.value = valA;
-          else formAdultsText.textContent = valA;
-        }
-        const minusB = ctrl
-          .closest(".form_picker-persons-wrapper")
-          .querySelector('[data-controls="minus"]');
-        if (minusB) {
-          if (formAdultsCount === 1) minusB.classList.add("is-disabled");
-          else minusB.classList.remove("is-disabled");
-        }
+
+    // ADULTS FUNCTIONALITY - Always initialize if found
+    if (aWrap && formAdultsText) {
+      console.log("Initializing adults functionality");
+
+      // Set initial adults text
+      const valA = tCount("adults", formAdultsCount);
+      if (formAdultsText.value !== undefined) {
+        formAdultsText.value = valA;
+      } else {
+        formAdultsText.textContent = valA;
+      }
+
+      // Initialize adults controls
+      const aCtrls = aWrap.querySelectorAll("[data-controls]");
+      aCtrls.forEach(function (ctrl) {
+        ctrl.addEventListener("click", function () {
+          const action = ctrl.getAttribute("data-controls");
+
+          if (action === "plus") {
+            formAdultsCount++;
+          } else if (action === "minus" && formAdultsCount > 1) {
+            formAdultsCount--;
+          }
+
+          // Update adults display
+          const newValA = tCount("adults", formAdultsCount);
+          if (formAdultsText.value !== undefined) {
+            formAdultsText.value = newValA;
+          } else {
+            formAdultsText.textContent = newValA;
+          }
+
+          // Update minus button state for adults
+          const minusBtn = aWrap.querySelector('[data-controls="minus"]');
+          if (minusBtn) {
+            if (formAdultsCount === 1) {
+              minusBtn.classList.add("is-disabled");
+            } else {
+              minusBtn.classList.remove("is-disabled");
+            }
+          }
+        });
       });
-    });
-    const cCtrls = cWrap.querySelectorAll("[data-controls]");
-    cCtrls.forEach(function (ctrl) {
-      ctrl.addEventListener("click", function () {
-        const t = ctrl.getAttribute("data-controls");
-        if (t === "plus") formChildrenCount++;
-        else if (t === "minus" && formChildrenCount > 0) formChildrenCount--;
-        formChildrenCount = clampChildrenCount(formChildrenCount);
-        const valC = tCount("children", formChildrenCount);
-        if (formChildsText) {
-          if (formChildsText.value !== undefined) formChildsText.value = valC;
-          else formChildsText.textContent = valC;
+
+      // Set initial minus button state for adults
+      const initialMinusBtn = aWrap.querySelector('[data-controls="minus"]');
+      if (initialMinusBtn) {
+        if (formAdultsCount === 1) {
+          initialMinusBtn.classList.add("is-disabled");
+        } else {
+          initialMinusBtn.classList.remove("is-disabled");
         }
-        const minusB = ctrl
-          .closest(".form_picker-persons-wrapper")
-          .querySelector('[data-controls="minus"]');
-        if (minusB) {
-          if (formChildrenCount === 0) minusB.classList.add("is-disabled");
-          else minusB.classList.remove("is-disabled");
-        }
-        // Altersfelder gemäß aktueller Kinderanzahl aktualisieren
+      }
+    } else {
+      console.warn(
+        "Adults form elements not found - adults functionality disabled"
+      );
+    }
+
+    // CHILDREN FUNCTIONALITY - Only initialize if found
+    if (cWrap && formChildsText) {
+      console.log("Initializing children functionality");
+
+      // Set initial children text
+      const valC = tCount("children", formChildrenCount);
+      if (formChildsText.value !== undefined) {
+        formChildsText.value = valC;
+      } else {
+        formChildsText.textContent = valC;
+      }
+
+      // Initialize children controls
+      const cCtrls = cWrap.querySelectorAll("[data-controls]");
+      cCtrls.forEach(function (ctrl) {
+        ctrl.addEventListener("click", function () {
+          const action = ctrl.getAttribute("data-controls");
+
+          if (action === "plus") {
+            formChildrenCount++;
+          } else if (action === "minus" && formChildrenCount > 0) {
+            formChildrenCount--;
+          }
+
+          // Clamp children count based on available age fields
+          formChildrenCount = clampChildrenCount(formChildrenCount);
+
+          // Update children display
+          const newValC = tCount("children", formChildrenCount);
+          if (formChildsText.value !== undefined) {
+            formChildsText.value = newValC;
+          } else {
+            formChildsText.textContent = newValC;
+          }
+
+          // Update minus button state for children
+          const minusBtn = cWrap.querySelector('[data-controls="minus"]');
+          if (minusBtn) {
+            if (formChildrenCount === 0) {
+              minusBtn.classList.add("is-disabled");
+            } else {
+              minusBtn.classList.remove("is-disabled");
+            }
+          }
+
+          // Update child age fields
+          updateChildAgeItems(formChildrenCount);
+
+          // Update plus/minus states for children
+          updateChildPlusMinusState(cWrap, formChildrenCount);
+        });
+      });
+
+      // Set initial states for children
+      setTimeout(() => {
         updateChildAgeItems(formChildrenCount);
-        // Plus/Minus-State für Formular-Kinderreihe aktualisieren
-        updateChildPlusMinusState(
-          ctrl.closest(".form_picker-persons-wrapper"),
-          formChildrenCount
-        );
-      });
-    });
-    // Initialzustand der Altersfelder anwenden (auch wenn Formular initial versteckt ist)
-    setTimeout(() => {
-      updateChildAgeItems(formChildrenCount);
-      // Initialer Plus/Minus-State anhand der vorhandenen Alters-Items
-      updateChildPlusMinusState(cWrap, clampChildrenCount(formChildrenCount));
-    }, 0);
+        updateChildPlusMinusState(cWrap, clampChildrenCount(formChildrenCount));
+      }, 0);
+    } else {
+      console.warn(
+        "Children form elements not found - children functionality disabled"
+      );
+      // Force children count to 0 if no children elements found
+      formChildrenCount = 0;
+    }
   })();
 
   (function customValidationSetup() {
