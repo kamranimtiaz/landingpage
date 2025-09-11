@@ -94,13 +94,13 @@ function tCount(nounKey, count) {
 
 function personsSummary(adults, children) {
   const adultsText = tCount("adults", adults);
-  
+
   // Only include children text if there are children (handle null/undefined/negative)
   if (children && children > 0) {
     const childrenText = tCount("children", children);
     return adultsText + ", " + childrenText;
   }
-  
+
   // Return only adults text when no children
   return adultsText;
 }
@@ -108,15 +108,15 @@ function personsSummary(adults, children) {
 // Alternative version with more explicit logic:
 function personsSummaryDetailed(adults, children) {
   const parts = [];
-  
+
   // Always include adults
   parts.push(tCount("adults", adults));
-  
+
   // Only include children if count > 0
   if (children && children > 0) {
     parts.push(tCount("children", children));
   }
-  
+
   return parts.join(", ");
 }
 
@@ -654,7 +654,9 @@ class HeroImageManager {
         this.season = paramSeason;
         this.topicToImageMap = this.buildImageMap();
         this.preloadImages();
-        console.log(`🌍 HeroImageManager: Updated season to ${paramSeason} from URL`);
+        console.log(
+          `🌍 HeroImageManager: Updated season to ${paramSeason} from URL`
+        );
       }
     }
 
@@ -670,9 +672,11 @@ class HeroImageManager {
         if (this.topicToImageMap[topicKey]) {
           this.loadHeroImage(topicKey, false); // No animation for initial load
           this.currentTopic = topicKey;
-          console.log(`🖼️ Loaded initial hero image for topic: ${topicKey} (season: ${this.season})`);
+          console.log(
+            `🖼️ Loaded initial hero image for topic: ${topicKey} (season: ${this.season})`
+          );
         }
-        
+
         // Then click the topic button to ensure UI state is correct
         this.clickTopicButton(topicKey);
       } else {
@@ -680,11 +684,15 @@ class HeroImageManager {
         // based on the first topic button and current season
         const firstTopicButton = document.querySelector("[data-topic]");
         if (firstTopicButton) {
-          const firstTopic = firstTopicButton.getAttribute("data-topic").toLowerCase();
+          const firstTopic = firstTopicButton
+            .getAttribute("data-topic")
+            .toLowerCase();
           if (this.topicToImageMap[firstTopic]) {
             this.loadHeroImage(firstTopic, false);
             this.currentTopic = firstTopic;
-            console.log(`🖼️ Loaded default hero image for topic: ${firstTopic} (season: ${this.season})`);
+            console.log(
+              `🖼️ Loaded default hero image for topic: ${firstTopic} (season: ${this.season})`
+            );
           }
         }
       }
@@ -1736,10 +1744,10 @@ class SeasonSwitchManager {
 
   init() {
     if (!this.seasonSwitch) return;
-    
+
     // Set initial season from URL parameter
     this.setInitialSeasonFromURL();
-    
+
     // Add click event listener
     this.seasonSwitch.addEventListener(
       "click",
@@ -1752,43 +1760,60 @@ class SeasonSwitchManager {
 
   setInitialSeasonFromURL() {
     const urlSeason = getURLParameter("season");
-    
-    // Validate season parameter
     const validSeasons = ["summer", "winter"];
-    const initialSeason = validSeasons.includes(urlSeason) ? urlSeason : "summer";
-    
-    // Update UI to match URL parameter
+
+    // Get default from data attribute
+    const dataDefault = this.seasonSwitch.getAttribute("data-default-season");
+    const defaultSeason = validSeasons.includes(dataDefault)
+      ? dataDefault
+      : "summer";
+
+    // URL parameter has precedence over data attribute
+    const initialSeason = validSeasons.includes(urlSeason)
+      ? urlSeason
+      : defaultSeason;
+
+    // Update UI to match initial season
     const isSummer = initialSeason === "summer";
     this.seasonSwitch.setAttribute("aria-checked", isSummer ? "true" : "false");
-    
-    // Update gallery system if season is different from default
+
+    // Update gallery system if season is different from summer (base default)
     if (initialSeason !== "summer") {
       this.gallerySystem.switchSeason(initialSeason);
     }
-    
-    console.log(`🌍 Initial season from URL: ${initialSeason}`);
+
+    console.log(
+      `🌍 Initial season: ${initialSeason} (URL: ${
+        urlSeason || "none"
+      }, default: ${defaultSeason})`
+    );
   }
 
   setupBrowserNavigation() {
     window.addEventListener("popstate", (event) => {
       const urlSeason = getURLParameter("season") || "summer";
       const currentSeason = this.getCurrentSeason();
-      
+
       if (urlSeason !== currentSeason) {
         // Update UI state
         const isSummer = urlSeason === "summer";
-        this.seasonSwitch.setAttribute("aria-checked", isSummer ? "true" : "false");
-        
+        this.seasonSwitch.setAttribute(
+          "aria-checked",
+          isSummer ? "true" : "false"
+        );
+
         // Update gallery system
         this.gallerySystem.switchSeason(urlSeason);
-        
+
         console.log(`🔄 Browser navigation: season changed to ${urlSeason}`);
       }
     });
   }
 
   getCurrentSeason() {
-    return this.seasonSwitch.getAttribute("aria-checked") === "true" ? "summer" : "winter";
+    return this.seasonSwitch.getAttribute("aria-checked") === "true"
+      ? "summer"
+      : "winter";
   }
 
   handleSeasonSwitch(evt) {
@@ -1806,7 +1831,7 @@ class SeasonSwitchManager {
 
     // Update gallery system
     this.gallerySystem.switchSeason(newSeason);
-    
+
     console.log(`🌍 Season switched to: ${newSeason}`);
   }
 }
@@ -1895,7 +1920,7 @@ class GallerySystem {
     this.parser = new GalleryDataParser();
     this.data = this.parser.parse();
     console.log(this.data);
-    
+
     // Set initial season from URL parameter
     this.currentSeason = this.getInitialSeason();
     this.currentTopic = null;
