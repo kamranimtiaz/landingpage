@@ -458,9 +458,11 @@ class SeasonController extends EventTarget {
 }
 
 class HeroImageManager {
+  
   constructor(galleryData, seasonController) {
     this.data = galleryData;
     this.seasonController = seasonController;
+    // FIXED: Get season from controller, not hardcoded default
     this.season = seasonController.getCurrentSeason();
     this.topicToImageMap = this.buildImageMap();
     this.heroImg = document.querySelector(".hero_img");
@@ -496,6 +498,17 @@ class HeroImageManager {
   handleInitialTopicAndSeason() {
     const initialState = URLManager.getInitialState();
 
+    // FIXED: Use the season from the controller, which is already correctly determined
+    const currentSeason = this.seasonController.getCurrentSeason();
+    
+    // If the determined season is different from what we built the image map with, rebuild it
+    if (currentSeason !== this.season) {
+      this.season = currentSeason;
+      this.topicToImageMap = this.buildImageMap();
+      this.preloadImages();
+      console.log(`🖼️ HeroImageManager: Updated season to ${currentSeason}`);
+    }
+
     this.showHeroImage();
 
     setTimeout(() => {
@@ -512,7 +525,7 @@ class HeroImageManager {
         }
         this.clickTopicButton(topicKey);
       } else {
-        // Load default hero image logic...
+        // Load default hero image based on current season
         const firstTopicButton = document.querySelector("[data-topic]");
         if (firstTopicButton) {
           const firstTopic = firstTopicButton
@@ -521,6 +534,9 @@ class HeroImageManager {
           if (this.topicToImageMap[firstTopic]) {
             this.loadHeroImage(firstTopic, false);
             this.currentTopic = firstTopic;
+            console.log(
+              `🖼️ Loaded default hero image for topic: ${firstTopic} (season: ${this.season})`
+            );
           }
         }
       }
@@ -561,63 +577,63 @@ class HeroImageManager {
     this.setupTopicChangeListener();
   }
 
-  handleInitialTopicAndSeason() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const paramTopic = urlParams.get("topic");
-    const paramSeason = urlParams.get("season");
+  // handleInitialTopicAndSeason() {
+  //   const urlParams = new URLSearchParams(window.location.search);
+  //   const paramTopic = urlParams.get("topic");
+  //   const paramSeason = urlParams.get("season");
 
-    // If season parameter exists and is different from current season,
-    // rebuild the image map with the correct season
-    if (paramSeason && paramSeason !== this.season) {
-      const validSeasons = ["summer", "winter"];
-      if (validSeasons.includes(paramSeason)) {
-        this.season = paramSeason;
-        this.topicToImageMap = this.buildImageMap();
-        this.preloadImages();
-        console.log(
-          `🌍 HeroImageManager: Updated season to ${paramSeason} from URL`
-        );
-      }
-    }
+  //   // If season parameter exists and is different from current season,
+  //   // rebuild the image map with the correct season
+  //   if (paramSeason && paramSeason !== this.season) {
+  //     const validSeasons = ["summer", "winter"];
+  //     if (validSeasons.includes(paramSeason)) {
+  //       this.season = paramSeason;
+  //       this.topicToImageMap = this.buildImageMap();
+  //       this.preloadImages();
+  //       console.log(
+  //         `🌍 HeroImageManager: Updated season to ${paramSeason} from URL`
+  //       );
+  //     }
+  //   }
 
-    this.showHeroImage();
+  //   this.showHeroImage();
 
-    setTimeout(() => {
-      this.hasLoadedInitialImage = true;
+  //   setTimeout(() => {
+  //     this.hasLoadedInitialImage = true;
 
-      // If URL has topic parameter, handle it
-      if (paramTopic) {
-        // First, try to load the hero image directly if we have it
-        const topicKey = paramTopic.toLowerCase();
-        if (this.topicToImageMap[topicKey]) {
-          this.loadHeroImage(topicKey, false); // No animation for initial load
-          this.currentTopic = topicKey;
-          console.log(
-            `🖼️ Loaded initial hero image for topic: ${topicKey} (season: ${this.season})`
-          );
-        }
+  //     // If URL has topic parameter, handle it
+  //     if (paramTopic) {
+  //       // First, try to load the hero image directly if we have it
+  //       const topicKey = paramTopic.toLowerCase();
+  //       if (this.topicToImageMap[topicKey]) {
+  //         this.loadHeroImage(topicKey, false); // No animation for initial load
+  //         this.currentTopic = topicKey;
+  //         console.log(
+  //           `🖼️ Loaded initial hero image for topic: ${topicKey} (season: ${this.season})`
+  //         );
+  //       }
 
-        // Then click the topic button to ensure UI state is correct
-        this.clickTopicButton(topicKey);
-      } else {
-        // No topic in URL, but we might need to load default hero image
-        // based on the first topic button and current season
-        const firstTopicButton = document.querySelector("[data-topic]");
-        if (firstTopicButton) {
-          const firstTopic = firstTopicButton
-            .getAttribute("data-topic")
-            .toLowerCase();
-          if (this.topicToImageMap[firstTopic]) {
-            this.loadHeroImage(firstTopic, false);
-            this.currentTopic = firstTopic;
-            console.log(
-              `🖼️ Loaded default hero image for topic: ${firstTopic} (season: ${this.season})`
-            );
-          }
-        }
-      }
-    }, 500); // Longer delay to ensure topic buttons are rendered
-  }
+  //       // Then click the topic button to ensure UI state is correct
+  //       this.clickTopicButton(topicKey);
+  //     } else {
+  //       // No topic in URL, but we might need to load default hero image
+  //       // based on the first topic button and current season
+  //       const firstTopicButton = document.querySelector("[data-topic]");
+  //       if (firstTopicButton) {
+  //         const firstTopic = firstTopicButton
+  //           .getAttribute("data-topic")
+  //           .toLowerCase();
+  //         if (this.topicToImageMap[firstTopic]) {
+  //           this.loadHeroImage(firstTopic, false);
+  //           this.currentTopic = firstTopic;
+  //           console.log(
+  //             `🖼️ Loaded default hero image for topic: ${firstTopic} (season: ${this.season})`
+  //           );
+  //         }
+  //       }
+  //     }
+  //   }, 500); // Longer delay to ensure topic buttons are rendered
+  // }
 
   clickTopicButton(topicSlug) {
     // Find the topic button with matching data-topic attribute
@@ -935,10 +951,53 @@ class GalleryTabsRenderer {
   }
 }
 
+// class GalleryImageRenderer {
+//   constructor(jsonData, season = "summer") {
+//     this.data = jsonData;
+//     this.season = season;
+//     this.template = document
+//       .querySelector(".swiper-slide.is-gallery")
+//       ?.cloneNode(true);
+//     this.container = document.querySelector(
+//       ".swiper-slide.is-gallery"
+//     )?.parentElement;
+//   }
+
+//   renderImages() {
+//     if (!this.container || !this.template) return;
+
+//     this.container.innerHTML = "";
+
+//     this.data.forEach((topic) => {
+//       const images = topic.images?.[this.season] || [];
+//       images.forEach((srcUrl) => {
+//         const slideClone = this.template.cloneNode(true);
+//         const slideImg = slideClone?.querySelector("img");
+//         const topicSlug = createTopicSlug(topic.topicname);
+//         slideClone.setAttribute("data-gallery-id", topicSlug);
+//         slideClone.setAttribute("data-topic-target", topicSlug);
+
+//         if (slideImg) {
+//           slideImg.src = srcUrl;
+//           slideImg.alt = topic.galleryname || topic.topicname;
+//         }
+
+//         this.container.appendChild(slideClone);
+//       });
+//     });
+//   }
+
+//   updateSeason(newSeason) {
+//     this.season = newSeason;
+//     this.renderImages();
+//   }
+// }
+
 class GalleryImageRenderer {
-  constructor(jsonData, season = "summer") {
+  constructor(jsonData, season) {
     this.data = jsonData;
-    this.season = season;
+    // FIXED: Don't default to "summer" - require explicit season parameter
+    this.season = season || "summer"; // Only fallback for backwards compatibility
     this.template = document
       .querySelector(".swiper-slide.is-gallery")
       ?.cloneNode(true);
@@ -978,9 +1037,10 @@ class GalleryImageRenderer {
 }
 
 class GallerySwiperManager {
-  constructor(data, season = "summer") {
+  constructor(data, season) {
     this.data = data;
-    this.season = season;
+    // FIXED: Don't default to "summer" - require explicit season parameter
+    this.season = season || "summer"; // Only fallback for backwards compatibility
     this.swiper = null;
     this.triggerElements = [];
     this.tabItems = [];
@@ -1253,10 +1313,127 @@ class GallerySwiperManager {
   }
 }
 
+// class QuoteImageManager {
+//   constructor(galleryData, season) {
+//     this.data = galleryData;
+//     // FIXED: Don't default to "summer" - require explicit season parameter
+//     this.season = season || "summer"; // Only fallback for backwards compatibility
+//     this.topicToImageMap = this.buildImageMap();
+//     this.quoteImg = null;
+//     this.currentTopic = null;
+//     this.init();
+
+//     if (window.seasonController) {
+//       window.seasonController.addEventListener("seasonChange", (e) => {
+//         this.updateSeason(e.detail.newSeason, this.currentTopic);
+//       });
+//     }
+//   }
+
+//   buildImageMap() {
+//     const imageMap = {};
+
+//     this.data.forEach((topic) => {
+//       const topicKey = topic.topicname.toLowerCase();
+//       const quoteImage = topic.quoteImages?.[this.season];
+
+//       if (quoteImage) {
+//         imageMap[topicKey] = quoteImage;
+//       }
+//     });
+
+//     return imageMap;
+//   }
+
+//   updateSeason(newSeason, currentTopic = null) {
+//     this.season = newSeason;
+//     this.topicToImageMap = this.buildImageMap();
+
+//     if (currentTopic && this.topicToImageMap[currentTopic.toLowerCase()]) {
+//       this.loadQuoteImage(currentTopic.toLowerCase());
+//     }
+//   }
+
+//   init() {
+//     this.findQuoteImageElement();
+//     if (!this.quoteImg) return;
+
+//     this.handleInitialTopic();
+//     this.setupTopicChangeListener();
+//   }
+
+//   findQuoteImageElement() {
+//     // First check if video element exists
+//     const quoteVideo = document.querySelector("[data-quote-video]");
+//     if (quoteVideo) {
+//       // Video is present, don't look for image element
+//       this.quoteImg = null;
+//       return;
+//     }
+
+//     // Video not found, look for image element
+//     this.quoteImg = document.querySelector("[data-quote-image]");
+//   }
+
+//   handleInitialTopic() {
+//     const urlParams = new URLSearchParams(window.location.search);
+//     const paramTopic = urlParams.get("topic");
+
+//     if (paramTopic && this.topicToImageMap[paramTopic.toLowerCase()]) {
+//       this.currentTopic = paramTopic.toLowerCase();
+//       this.loadQuoteImage(this.currentTopic);
+//     } else {
+//       this.showQuoteImage();
+//     }
+//   }
+
+//   setupTopicChangeListener() {
+//     document.addEventListener("topicChange", (e) => {
+//       const selectedTopic = e.detail.topic.toLowerCase();
+//       this.currentTopic = selectedTopic;
+//       if (this.topicToImageMap[selectedTopic]) {
+//         this.loadQuoteImage(selectedTopic);
+//       }
+//     });
+//   }
+
+//   loadQuoteImage(topicKey) {
+//     const imageUrl = this.topicToImageMap[topicKey];
+//     if (!imageUrl || !this.quoteImg) return;
+
+//     const tempImg = new Image();
+//     tempImg.src = imageUrl;
+
+//     tempImg.onload = () => {
+//       this.quoteImg.removeAttribute("srcset");
+//       this.quoteImg.removeAttribute("sizes");
+//       this.quoteImg.src = imageUrl;
+
+//       this.showQuoteImage();
+//     };
+
+//     tempImg.onerror = () => {
+//       console.warn(`Failed to load quote image for topic: ${topicKey}`);
+//       this.showQuoteImage();
+//     };
+//   }
+
+//   showQuoteImage() {
+//     if (this.quoteImg) {
+//       this.quoteImg.style.visibility = "visible";
+//       this.quoteImg.style.opacity = "1";
+//     }
+//   }
+
+//   getCurrentTopic() {
+//     return this.currentTopic;
+//   }
+// }
+
 class QuoteImageManager {
-  constructor(galleryData, season = "summer") {
+  constructor(galleryData, season) {
     this.data = galleryData;
-    this.season = season;
+    this.season = season || "summer";
     this.topicToImageMap = this.buildImageMap();
     this.quoteImg = null;
     this.currentTopic = null;
@@ -1288,8 +1465,50 @@ class QuoteImageManager {
     this.season = newSeason;
     this.topicToImageMap = this.buildImageMap();
 
-    if (currentTopic && this.topicToImageMap[currentTopic.toLowerCase()]) {
-      this.loadQuoteImage(currentTopic.toLowerCase());
+    // FIXED: If no currentTopic is provided, try to determine it from the current state
+    let topicToUse = currentTopic;
+    
+    if (!topicToUse) {
+      // Try to get the current topic from various sources
+      topicToUse = this.getCurrentTopicFromDOM();
+    }
+
+    if (topicToUse && this.topicToImageMap[topicToUse.toLowerCase()]) {
+      this.loadQuoteImage(topicToUse.toLowerCase());
+    } else {
+      // FIXED: If no specific topic, try to load the first available topic's image for the new season
+      this.loadDefaultQuoteImageForSeason();
+    }
+  }
+
+  // FIXED: New method to determine current topic from DOM state
+  getCurrentTopicFromDOM() {
+    // Try to find the currently active topic button
+    const activeTopicButton = document.querySelector(".topic_button.is-active");
+    if (activeTopicButton) {
+      return activeTopicButton.getAttribute("data-topic");
+    }
+
+    // Fallback: try to find the first topic button (which would be the default)
+    const firstTopicButton = document.querySelector(".topic_button[data-topic]");
+    if (firstTopicButton) {
+      return firstTopicButton.getAttribute("data-topic");
+    }
+
+    return null;
+  }
+
+  // FIXED: New method to load default quote image when no specific topic is available
+  loadDefaultQuoteImageForSeason() {
+    // Try to find the first available topic that has a quote image for this season
+    const firstAvailableTopic = Object.keys(this.topicToImageMap)[0];
+    
+    if (firstAvailableTopic) {
+      this.loadQuoteImage(firstAvailableTopic);
+      console.log(`🖼️ QuoteImageManager: Loaded default quote image for season ${this.season}, topic: ${firstAvailableTopic}`);
+    } else {
+      console.log(`⚠️ QuoteImageManager: No quote images available for season ${this.season}`);
+      this.showQuoteImage(); // Just show whatever image is currently there
     }
   }
 
@@ -1322,6 +1541,18 @@ class QuoteImageManager {
       this.currentTopic = paramTopic.toLowerCase();
       this.loadQuoteImage(this.currentTopic);
     } else {
+      // FIXED: If no URL topic, try to determine and load a default topic
+      const defaultTopic = this.getCurrentTopicFromDOM();
+      
+      if (defaultTopic && this.topicToImageMap[defaultTopic.toLowerCase()]) {
+        this.currentTopic = defaultTopic.toLowerCase();
+        this.loadQuoteImage(this.currentTopic);
+        console.log(`🖼️ QuoteImageManager: Loaded default topic ${this.currentTopic} for season ${this.season}`);
+      } else {
+        // Load the first available topic's image as fallback
+        this.loadDefaultQuoteImageForSeason();
+      }
+      
       this.showQuoteImage();
     }
   }
@@ -1329,9 +1560,12 @@ class QuoteImageManager {
   setupTopicChangeListener() {
     document.addEventListener("topicChange", (e) => {
       const selectedTopic = e.detail.topic.toLowerCase();
-      this.currentTopic = selectedTopic;
+      this.currentTopic = selectedTopic; // FIXED: Always update currentTopic
+      
       if (this.topicToImageMap[selectedTopic]) {
         this.loadQuoteImage(selectedTopic);
+      } else {
+        console.warn(`⚠️ QuoteImageManager: No quote image found for topic ${selectedTopic} in season ${this.season}`);
       }
     });
   }
@@ -1349,6 +1583,7 @@ class QuoteImageManager {
       this.quoteImg.src = imageUrl;
 
       this.showQuoteImage();
+      console.log(`🖼️ QuoteImageManager: Loaded quote image for topic ${topicKey}, season ${this.season}`);
     };
 
     tempImg.onerror = () => {
@@ -1525,22 +1760,29 @@ class GallerySystem {
     this.data = this.parser.parse();
     console.log(this.data);
 
-    // Get initial season from URL or HTML data attribute
+    // FIXED: Determine the actual initial season BEFORE creating any components
     const initialState = URLManager.getInitialState();
     const seasonSwitch = document.querySelector(".navbar_season-switch");
     const htmlDefaultSeason = seasonSwitch?.getAttribute("data-default-season");
-    const defaultSeason = ["summer", "winter"].includes(htmlDefaultSeason)
-      ? htmlDefaultSeason
-      : "summer";
+    
+    // Validate HTML default season
+    const validSeasons = ["summer", "winter"];
+    const fallbackSeason = "summer"; // Only used as absolute fallback
+    
+    let finalInitialSeason;
+    
+    // Priority order: URL parameter > HTML data attribute > fallback
+    if (initialState.season && validSeasons.includes(initialState.season)) {
+      finalInitialSeason = initialState.season;
+    } else if (htmlDefaultSeason && validSeasons.includes(htmlDefaultSeason)) {
+      finalInitialSeason = htmlDefaultSeason;
+    } else {
+      finalInitialSeason = fallbackSeason;
+    }
 
-    // URL parameter takes precedence over HTML data attribute
-    const finalInitialSeason =
-      initialState.season !== "summer"
-        ? initialState.season
-        : URLManager.getParameter("season")
-        ? initialState.season
-        : defaultSeason;
+    console.log(`🌍 Determined initial season: ${finalInitialSeason}`);
 
+    // FIXED: Initialize SeasonController with the correctly determined season
     this.seasonController = new SeasonController(finalInitialSeason);
     this.currentTopic = null;
 
@@ -1579,13 +1821,16 @@ class GallerySystem {
   }
 
   initializeComponents() {
+    // FIXED: Get the actual current season from the controller, not hardcoded
     const currentSeason = this.seasonController.getCurrentSeason();
+    console.log(`🔧 Initializing components with season: ${currentSeason}`);
 
     this.heroImageManager = new HeroImageManager(
       this.data,
       this.seasonController
     );
 
+    // FIXED: Initialize with the correct season, not hardcoded summer
     this.galleryImageRenderer = new GalleryImageRenderer(
       this.data,
       currentSeason
@@ -1596,6 +1841,8 @@ class GallerySystem {
 
     // Initialize Swiper managers
     this.topicSwiperManager = new TopicSwiperManager(this.data);
+    
+    // FIXED: Initialize with correct season
     this.gallerySwiperManager = new GallerySwiperManager(
       this.data,
       currentSeason
@@ -1628,8 +1875,6 @@ class GallerySystem {
       }
     });
   }
-
-  // Remove the old switchSeason method - it's now handled by SeasonController
 }
 
 /******************************************************************************
