@@ -260,24 +260,6 @@ function createTopicSlug(topicName) {
   ); // Remove leading/trailing dashes
 }
 
-function getURLParameter(param) {
-  const urlParams = new URLSearchParams(window.location.search);
-  return urlParams.get(param);
-}
-
-function updateURLParameter(param, value) {
-  const url = new URL(window.location);
-  url.searchParams.set(param, value);
-  window.history.pushState({ [param]: value }, "", url);
-  console.log(`📍 Updated URL parameter: ${param}=${value}`);
-}
-
-function removeURLParameter(param) {
-  const url = new URL(window.location);
-  url.searchParams.delete(param);
-  window.history.pushState({}, "", url);
-}
-
 class GalleryDataParser {
   constructor() {
     this.cachedData = null;
@@ -395,195 +377,91 @@ class GalleryDataParser {
     };
   }
 }
+class URLManager {
+  static getParameter(param) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(param);
+  }
 
-// class HeroImageManager {
-//   constructor(galleryData, season = "summer") {
-//     this.data = galleryData;
-//     this.season = season;
-//     this.topicToImageMap = this.buildImageMap();
-//     this.heroImg = document.querySelector(".hero_img");
-//     this.currentTopic = null;
-//     this.hasLoadedInitialImage = false;
-//     this.imageCache = new Map();
-//     this.isTransitioning = false;
+  static updateParameter(param, value) {
+    const url = new URL(window.location);
+    url.searchParams.set(param, value);
+    window.history.pushState({ [param]: value }, "", url);
+    console.log(`📍 Updated URL parameter: ${param}=${value}`);
+  }
 
-//     this.init();
-//   }
+  static removeParameter(param) {
+    const url = new URL(window.location);
+    url.searchParams.delete(param);
+    window.history.pushState({}, "", url);
+  }
 
-//   buildImageMap() {
-//     const imageMap = {};
-//     this.data.forEach((topic) => {
-//       const topicKey = topic.topicname.toLowerCase();
-//       const heroImage = topic.heroImages?.[this.season];
-//       if (heroImage) {
-//         imageMap[topicKey] = heroImage;
-//       }
-//     });
-//     return imageMap;
-//   }
+  static getInitialState() {
+    const topic = this.getParameter("topic");
+    const season = this.getParameter("season");
 
-//   preloadImages() {
-//     Object.entries(this.topicToImageMap).forEach(([topic, imageUrl]) => {
-//       if (!this.imageCache.has(imageUrl)) {
-//         const img = new Image();
-//         img.src = imageUrl;
-//         img.onload = () => {
-//           this.imageCache.set(imageUrl, img);
-//         };
-//         img.onerror = () => {
-//           console.warn(`Failed to preload hero image: ${imageUrl}`);
-//         };
-//       }
-//     });
-//   }
+    return {
+      topic: topic ? topic.toLowerCase() : null,
+      season: ["summer", "winter"].includes(season) ? season : null, // Return null if no URL param
+    };
+  }
 
-//   updateSeason(newSeason, currentTopic = null) {
-//     this.season = newSeason;
-//     this.topicToImageMap = this.buildImageMap();
-//     this.preloadImages();
+  static setupBrowserNavigation(callback) {
+    window.addEventListener("popstate", (event) => {
+      const newState = this.getInitialState();
+      if (callback) callback(newState);
+    });
+  }
+}
 
-//     if (!this.hasLoadedInitialImage) return;
+class SeasonController extends EventTarget {
+  constructor(initialSeason = "summer") {
+    super();
+    this.currentSeason = initialSeason;
+    this.components = new Set();
+  }
 
-//     const topicToCheck = currentTopic || this.currentTopic;
-//     if (topicToCheck && this.topicToImageMap[topicToCheck.toLowerCase()]) {
-//       this.loadHeroImage(topicToCheck.toLowerCase(), true);
-//     }
-//   }
+  registerComponent(component) {
+    this.components.add(component);
+  }
 
-//   init() {
-//     if (!this.heroImg) return;
-//     this.preloadImages();
-//     this.handleInitialTopic();
-//     this.setupTopicChangeListener();
-//   }
+  unregisterComponent(component) {
+    this.components.delete(component);
+  }
 
-//   handleInitialTopic() {
-//     const urlParams = new URLSearchParams(window.location.search);
-//     const paramTopic = urlParams.get("topic");
+  switchSeason(newSeason) {
+    if (this.currentSeason === newSeason) return;
 
-//     this.showHeroImage();
+    const oldSeason = this.currentSeason;
+    this.currentSeason = newSeason;
 
-//     setTimeout(() => {
-//       this.hasLoadedInitialImage = true;
+    // Update URL
+    URLManager.updateParameter("season", newSeason);
 
-//       // If URL has topic parameter, click the corresponding topic button
-//       if (paramTopic) {
-//         this.clickTopicButton(paramTopic.toLowerCase());
-//       }
-//     }, 500); // Longer delay to ensure topic buttons are rendered
-//   }
+    // Notify all registered components
+    this.dispatchEvent(
+      new CustomEvent("seasonChange", {
+        detail: {
+          newSeason,
+          oldSeason,
+          components: Array.from(this.components),
+        },
+      })
+    );
 
-//   clickTopicButton(topicSlug) {
-//     // Find the topic button with matching data-topic attribute
-//     const topicButton = document.querySelector(`[data-topic="${topicSlug}"]`);
+    console.log(`🌍 Season switched from ${oldSeason} to ${newSeason}`);
+  }
 
-//     if (topicButton) {
-//       console.log(`🎯 Clicking topic button for: ${topicSlug}`);
-//       topicButton.click();
-//     } else {
-//       console.warn(`⚠️ Topic button not found for: ${topicSlug}`);
-//       // Debug: Show available buttons
-//       const allButtons = document.querySelectorAll("[data-topic]");
-//       console.log(
-//         "Available topic buttons:",
-//         Array.from(allButtons).map((btn) => btn.getAttribute("data-topic"))
-//       );
-//     }
-//   }
-
-//   setupTopicChangeListener() {
-//     document.addEventListener("topicChange", (e) => {
-//       const selectedTopic = e.detail.topic.toLowerCase();
-//       this.currentTopic = selectedTopic;
-
-//       if (this.hasLoadedInitialImage && this.topicToImageMap[selectedTopic]) {
-//         this.loadHeroImage(selectedTopic, true);
-//       }
-//     });
-//   }
-
-//   loadHeroImage(topicKey, animated = false) {
-//     if (this.isTransitioning) return;
-
-//     const imageUrl = this.topicToImageMap[topicKey];
-//     if (!imageUrl || !this.heroImg) return;
-
-//     this.isTransitioning = true;
-
-//     if (this.imageCache.has(imageUrl)) {
-//       this.performFadeTransition(imageUrl, animated);
-//     } else {
-//       const tempImg = new Image();
-//       tempImg.src = imageUrl;
-
-//       tempImg.onload = () => {
-//         this.imageCache.set(imageUrl, tempImg);
-//         this.performFadeTransition(imageUrl, animated);
-//       };
-
-//       tempImg.onerror = () => {
-//         console.warn(`Failed to load hero image for topic: ${topicKey}`);
-//         this.isTransitioning = false;
-//         this.showHeroImage();
-//       };
-//     }
-//   }
-
-//   performFadeTransition(imageUrl, animated) {
-//     if (!animated) {
-//       // No animation - just set image directly
-//       this.heroImg.removeAttribute("srcset");
-//       this.heroImg.removeAttribute("sizes");
-//       this.heroImg.src = imageUrl;
-//       this.heroImg.style.opacity = "1";
-//       this.isTransitioning = false;
-//       return;
-//     }
-
-//     // Step 1: Fade out
-//     this.heroImg.style.opacity = "0";
-
-//     // Step 2: Change image while invisible, then fade in with scale
-//     setTimeout(() => {
-//       // Remove scale class while invisible
-//       this.heroImg.classList.remove("scaleup");
-
-//       // Change image
-//       this.heroImg.removeAttribute("srcset");
-//       this.heroImg.removeAttribute("sizes");
-//       this.heroImg.src = imageUrl;
-
-//       // Force reflow to ensure class is removed
-//       void this.heroImg.offsetWidth;
-
-//       // Add scale class back for new image (forces restart)
-//       this.heroImg.classList.add("scaleup");
-
-//       // Fade back in
-//       this.heroImg.style.opacity = "1";
-
-//       this.isTransitioning = false;
-//     }, 200);
-//   }
-
-//   showHeroImage() {
-//     if (this.heroImg) {
-//       this.heroImg.style.visibility = "visible";
-//       if (!this.isTransitioning) {
-//         this.heroImg.style.opacity = "1";
-//       }
-//     }
-//   }
-
-//   getCurrentTopic() {
-//     return this.currentTopic;
-//   }
-// }
+  getCurrentSeason() {
+    return this.currentSeason;
+  }
+}
 
 class HeroImageManager {
-  constructor(galleryData, season = "summer") {
+  constructor(galleryData, seasonController) {
     this.data = galleryData;
-    this.season = season;
+    this.seasonController = seasonController;
+    this.season = seasonController.getCurrentSeason();
     this.topicToImageMap = this.buildImageMap();
     this.heroImg = document.querySelector(".hero_img");
     this.currentTopic = null;
@@ -591,7 +469,62 @@ class HeroImageManager {
     this.imageCache = new Map();
     this.isTransitioning = false;
 
+    // Register with season controller
+    this.seasonController.registerComponent(this);
+    this.setupSeasonListener();
+
     this.init();
+  }
+
+  setupSeasonListener() {
+    this.seasonController.addEventListener("seasonChange", (e) => {
+      const { newSeason } = e.detail;
+      this.season = newSeason;
+      this.topicToImageMap = this.buildImageMap();
+      this.preloadImages();
+
+      if (
+        this.hasLoadedInitialImage &&
+        this.currentTopic &&
+        this.topicToImageMap[this.currentTopic.toLowerCase()]
+      ) {
+        this.loadHeroImage(this.currentTopic.toLowerCase(), true);
+      }
+    });
+  }
+
+  handleInitialTopicAndSeason() {
+    const initialState = URLManager.getInitialState();
+
+    this.showHeroImage();
+
+    setTimeout(() => {
+      this.hasLoadedInitialImage = true;
+
+      if (initialState.topic) {
+        const topicKey = initialState.topic.toLowerCase();
+        if (this.topicToImageMap[topicKey]) {
+          this.loadHeroImage(topicKey, false);
+          this.currentTopic = topicKey;
+          console.log(
+            `🖼️ Loaded initial hero image for topic: ${topicKey} (season: ${this.season})`
+          );
+        }
+        this.clickTopicButton(topicKey);
+      } else {
+        // Load default hero image logic...
+        const firstTopicButton = document.querySelector("[data-topic]");
+        if (firstTopicButton) {
+          const firstTopic = firstTopicButton
+            .getAttribute("data-topic")
+            .toLowerCase();
+          if (this.topicToImageMap[firstTopic]) {
+            this.loadHeroImage(firstTopic, false);
+            this.currentTopic = firstTopic;
+          }
+        }
+      }
+    }, 500);
   }
 
   buildImageMap() {
@@ -619,19 +552,6 @@ class HeroImageManager {
         };
       }
     });
-  }
-
-  updateSeason(newSeason, currentTopic = null) {
-    this.season = newSeason;
-    this.topicToImageMap = this.buildImageMap();
-    this.preloadImages();
-
-    if (!this.hasLoadedInitialImage) return;
-
-    const topicToCheck = currentTopic || this.currentTopic;
-    if (topicToCheck && this.topicToImageMap[topicToCheck.toLowerCase()]) {
-      this.loadHeroImage(topicToCheck.toLowerCase(), true);
-    }
   }
 
   init() {
@@ -806,194 +726,6 @@ class HeroImageManager {
   }
 }
 
-// class TopicSwiperManager {
-//   constructor(data) {
-//     this.data = data;
-//     this.swiper = null;
-//     this.triggers = [];
-//     this.tabItems = [];
-//     this.currentTopic = null;
-//     this.init();
-//   }
-
-//   init() {
-//     this.setupElements();
-//     this.initializeSwiper();
-//     this.setupEventListeners();
-//     this.setupDefaultTopic();
-//   }
-
-//   setupElements() {
-//     this.triggers = document.querySelectorAll(".topic_button[data-topic]");
-//     this.tabItems = Array.from(this.triggers).map((trigger) =>
-//       trigger.closest(".swiper-slide")
-//     );
-//   }
-
-//   initializeSwiper() {
-//     if (this.swiper) {
-//       this.swiper.destroy(true, true);
-//     }
-
-//     this.swiper = new Swiper(".swiper.is-topic", {
-//       slidesPerView: 2.5,
-//       spaceBetween: 0,
-//       rewind: true,
-//       navigation: {
-//         nextEl: ".topic_next-btn",
-//         prevEl: ".topic_prev-btn",
-//       },
-//       keyboard: {
-//         enabled: true,
-//         onlyInViewport: true,
-//       },
-//       breakpoints: {
-//         389: { slidesPerView: 3.5 },
-//         480: { slidesPerView: 3 },
-//         768: { slidesPerView: 4 },
-//       },
-//       on: {
-//         init: () => this.correctSwiperARIARoles(),
-//         update: () => this.correctSwiperARIARoles(),
-//       },
-//     });
-
-//     // Delayed check in case Swiper overrides attributes after initialization
-//     setTimeout(() => this.correctSwiperARIARoles(), 1000);
-//   }
-
-//   correctSwiperARIARoles() {
-//     const topicWrapper = document.querySelector(".swiper-wrapper.is-topic");
-//     if (topicWrapper) {
-//       topicWrapper.setAttribute("role", "tablist");
-
-//       const topicSlides = topicWrapper.querySelectorAll(".swiper-slide");
-//       topicSlides.forEach((slide) => {
-//         slide.setAttribute("role", "tab");
-//         if (!slide.hasAttribute("aria-selected")) {
-//           slide.setAttribute("aria-selected", "false");
-//         }
-//       });
-
-//       const anySelected = Array.from(topicSlides).some(
-//         (slide) => slide.getAttribute("aria-selected") === "true"
-//       );
-//       if (!anySelected && topicSlides.length > 0) {
-//         topicSlides[0].setAttribute("aria-selected", "true");
-//       }
-//     }
-//   }
-
-//   setupEventListeners() {
-//     this.triggers.forEach((trigger) => {
-//       trigger.addEventListener("click", () => {
-//         this.handleTopicClick(trigger);
-//       });
-//     });
-//   }
-
-//   handleTopicClick(trigger) {
-//     // Reset visual feedback for all triggers
-//     this.triggers.forEach((btn) => {
-//       btn.classList.remove("is-active");
-//     });
-
-//     // Reset ARIA attributes on tab elements
-//     this.tabItems.forEach((tabItem) => {
-//       if (tabItem) {
-//         tabItem.setAttribute("aria-selected", "false");
-//       }
-//     });
-
-//     // Set visual feedback for active trigger
-//     trigger.classList.add("is-active");
-
-//     // Set ARIA attributes for parent tab element
-//     const parentTabItem = trigger.closest(".swiper-slide");
-//     if (parentTabItem) {
-//       parentTabItem.setAttribute("aria-selected", "true");
-//     }
-
-//     const topic = trigger.getAttribute("data-topic").toLowerCase();
-//     this.currentTopic = topic;
-
-//     // UPDATE URL PARAMETER
-//     this.updateURLParameter(topic);
-
-//     const evt = new CustomEvent("topicChange", {
-//       detail: { topic, manual: true },
-//     });
-//     document.dispatchEvent(evt);
-
-//     // Slide to active topic
-//     const index = Array.from(this.triggers).findIndex((btn) => btn === trigger);
-//     this.swiper.slideTo(index);
-//   }
-
-//   // Add this new method to TopicSwiperManager class
-//   updateURLParameter(topic) {
-//     const url = new URL(window.location);
-//     url.searchParams.set("topic", topic);
-
-//     // Update URL without page reload
-//     window.history.pushState({ topic }, "", url);
-
-//     console.log(`📍 Updated URL parameter: topic=${topic}`);
-//   }
-
-//   setupDefaultTopic() {
-//     const urlParams = new URLSearchParams(window.location.search);
-//     const urlTopic = urlParams.get("topic");
-//     let defaultTopic = urlTopic ? urlTopic.toLowerCase() : null;
-
-//     if (!defaultTopic && this.triggers.length > 0) {
-//       defaultTopic = this.triggers[0].getAttribute("data-topic").toLowerCase();
-//     }
-
-//     this.triggers.forEach((trigger, index) => {
-//       const triggerTopic = trigger.getAttribute("data-topic").toLowerCase();
-//       const isActive = triggerTopic === defaultTopic;
-
-//       if (isActive) {
-//         trigger.classList.add("is-active");
-//         this.currentTopic = defaultTopic;
-//       } else {
-//         trigger.classList.remove("is-active");
-//       }
-
-//       const parentTabItem = trigger.closest(".swiper-slide");
-//       if (parentTabItem) {
-//         parentTabItem.setAttribute(
-//           "aria-selected",
-//           isActive ? "true" : "false"
-//         );
-//       }
-
-//       if (isActive) {
-//         const evt = new CustomEvent("topicChange", {
-//           detail: { topic: defaultTopic, manual: false },
-//         });
-//         document.dispatchEvent(evt);
-
-//         setTimeout(() => {
-//           this.swiper.slideTo(index);
-//         }, 100);
-//       }
-//     });
-//   }
-
-//   destroy() {
-//     if (this.swiper) {
-//       this.swiper.destroy(true, true);
-//       this.swiper = null;
-//     }
-//   }
-
-//   getCurrentTopic() {
-//     return this.currentTopic;
-//   }
-// }
-
 class TopicSwiperManager {
   constructor(data) {
     this.data = data;
@@ -1105,8 +837,7 @@ class TopicSwiperManager {
     const topic = trigger.getAttribute("data-topic").toLowerCase();
     this.currentTopic = topic;
 
-    // UPDATE URL PARAMETER using centralized function
-    updateURLParameter("topic", topic);
+    URLManager.updateParameter("topic", topic);
 
     const evt = new CustomEvent("topicChange", {
       detail: { topic, manual: true },
@@ -1119,9 +850,8 @@ class TopicSwiperManager {
   }
 
   setupDefaultTopic() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlTopic = urlParams.get("topic");
-    let defaultTopic = urlTopic ? urlTopic.toLowerCase() : null;
+    const initialState = URLManager.getInitialState();
+    let defaultTopic = initialState.topic;
 
     if (!defaultTopic && this.triggers.length > 0) {
       defaultTopic = this.triggers[0].getAttribute("data-topic").toLowerCase();
@@ -1531,6 +1261,12 @@ class QuoteImageManager {
     this.quoteImg = null;
     this.currentTopic = null;
     this.init();
+
+    if (window.seasonController) {
+      window.seasonController.addEventListener("seasonChange", (e) => {
+        this.updateSeason(e.detail.newSeason, this.currentTopic);
+      });
+    }
   }
 
   buildImageMap() {
@@ -1707,37 +1443,9 @@ class TopicContentRenderer {
   }
 }
 
-// class SeasonSwitchManager {
-//   constructor(gallerySystem) {
-//     this.gallerySystem = gallerySystem;
-//     this.seasonSwitch = document.querySelector(".navbar_season-switch");
-//     this.init();
-//   }
-
-//   init() {
-//     if (!this.seasonSwitch) return;
-//     this.seasonSwitch.addEventListener(
-//       "click",
-//       this.handleSeasonSwitch.bind(this)
-//     );
-//   }
-
-//   handleSeasonSwitch(evt) {
-//     const el = evt.target.closest('[role="switch"]');
-//     if (!el) return;
-
-//     const isCurrentlySummer = el.getAttribute("aria-checked") === "true";
-//     const newSeason = isCurrentlySummer ? "winter" : "summer";
-
-//     el.setAttribute("aria-checked", isCurrentlySummer ? "false" : "true");
-
-//     this.gallerySystem.switchSeason(newSeason);
-//   }
-// }
-
 class SeasonSwitchManager {
-  constructor(gallerySystem) {
-    this.gallerySystem = gallerySystem;
+  constructor(seasonController) {
+    this.seasonController = seasonController;
     this.seasonSwitch = document.querySelector(".navbar_season-switch");
     this.init();
   }
@@ -1745,67 +1453,50 @@ class SeasonSwitchManager {
   init() {
     if (!this.seasonSwitch) return;
 
-    // Set initial season from URL parameter
     this.setInitialSeasonFromURL();
-
-    // Add click event listener
     this.seasonSwitch.addEventListener(
       "click",
       this.handleSeasonSwitch.bind(this)
     );
-
-    // Add browser navigation support
     this.setupBrowserNavigation();
   }
 
   setInitialSeasonFromURL() {
-    const urlSeason = getURLParameter("season");
-    const validSeasons = ["summer", "winter"];
-
-    // Get default from data attribute
+    const initialState = URLManager.getInitialState();
     const dataDefault = this.seasonSwitch.getAttribute("data-default-season");
-    const defaultSeason = validSeasons.includes(dataDefault)
+    const defaultSeason = ["summer", "winter"].includes(dataDefault)
       ? dataDefault
       : "summer";
 
-    // URL parameter has precedence over data attribute
-    const initialSeason = validSeasons.includes(urlSeason)
-      ? urlSeason
-      : defaultSeason;
+    // URL parameter has precedence, otherwise use data-default-season
+    const initialSeason = initialState.season || defaultSeason;
 
     // Update UI to match initial season
     const isSummer = initialSeason === "summer";
     this.seasonSwitch.setAttribute("aria-checked", isSummer ? "true" : "false");
 
-    // Update gallery system if season is different from summer (base default)
-    if (initialSeason !== "summer") {
-      this.gallerySystem.switchSeason(initialSeason);
+    // Also update the SeasonController if it differs
+    if (this.seasonController.getCurrentSeason() !== initialSeason) {
+      this.seasonController.currentSeason = initialSeason; // Direct assignment to avoid triggering events
     }
 
     console.log(
       `🌍 Initial season: ${initialSeason} (URL: ${
-        urlSeason || "none"
-      }, default: ${defaultSeason})`
+        initialState.season || "none"
+      }, HTML default: ${dataDefault})`
     );
   }
 
   setupBrowserNavigation() {
-    window.addEventListener("popstate", (event) => {
-      const urlSeason = getURLParameter("season") || "summer";
+    URLManager.setupBrowserNavigation((newState) => {
       const currentSeason = this.getCurrentSeason();
-
-      if (urlSeason !== currentSeason) {
-        // Update UI state
-        const isSummer = urlSeason === "summer";
+      if (newState.season !== currentSeason) {
+        const isSummer = newState.season === "summer";
         this.seasonSwitch.setAttribute(
           "aria-checked",
           isSummer ? "true" : "false"
         );
-
-        // Update gallery system
-        this.gallerySystem.switchSeason(urlSeason);
-
-        console.log(`🔄 Browser navigation: season changed to ${urlSeason}`);
+        this.seasonController.switchSeason(newState.season);
       }
     });
   }
@@ -1823,97 +1514,10 @@ class SeasonSwitchManager {
     const isCurrentlySummer = el.getAttribute("aria-checked") === "true";
     const newSeason = isCurrentlySummer ? "winter" : "summer";
 
-    // Update UI state
     el.setAttribute("aria-checked", isCurrentlySummer ? "false" : "true");
-
-    // Update URL parameter
-    updateURLParameter("season", newSeason);
-
-    // Update gallery system
-    this.gallerySystem.switchSeason(newSeason);
-
-    console.log(`🌍 Season switched to: ${newSeason}`);
+    this.seasonController.switchSeason(newSeason);
   }
 }
-
-// class GallerySystem {
-//   constructor() {
-//     this.parser = new GalleryDataParser();
-//     this.data = this.parser.parse();
-//     console.log(this.data);
-//     this.currentSeason = "summer";
-//     this.currentTopic = null;
-
-//     this.heroImageManager = null;
-//     this.galleryImageRenderer = null;
-//     this.topicSwiperManager = null;
-//     this.gallerySwiperManager = null;
-//     this.quoteImageManager = null;
-
-//     this.init();
-//   }
-
-//   init() {
-//     this.renderStaticContent();
-//     this.initializeComponents();
-//     this.setupEventListeners();
-
-//     new SeasonSwitchManager(this);
-//   }
-
-//   renderStaticContent() {
-//     const topicRenderer = new TopicRenderer(this.data);
-//     topicRenderer.renderTopics();
-
-//     const tabsRenderer = new GalleryTabsRenderer(this.data);
-//     tabsRenderer.renderTabs();
-
-//     const topicContentRenderer = new TopicContentRenderer(this.data);
-//   }
-
-//   initializeComponents() {
-//     this.heroImageManager = new HeroImageManager(this.data, this.currentSeason);
-//     this.galleryImageRenderer = new GalleryImageRenderer(
-//       this.data,
-//       this.currentSeason
-//     );
-//     this.galleryImageRenderer.renderImages();
-//     this.quoteImageManager = new QuoteImageManager(
-//       this.data,
-//       this.currentSeason
-//     );
-
-//     // Initialize Swiper managers
-//     this.topicSwiperManager = new TopicSwiperManager(this.data);
-//     this.gallerySwiperManager = new GallerySwiperManager(
-//       this.data,
-//       this.currentSeason
-//     );
-//   }
-
-//   setupEventListeners() {
-//     document.addEventListener("topicChange", (e) => {
-//       this.currentTopic = e.detail.topic.toLowerCase();
-//     });
-//   }
-
-//   switchSeason(newSeason) {
-//     this.currentSeason = newSeason;
-
-//     const currentTopic = this.heroImageManager.getCurrentTopic();
-
-//     this.heroImageManager.updateSeason(newSeason, currentTopic);
-//     this.galleryImageRenderer.updateSeason(newSeason);
-//     this.quoteImageManager.updateSeason(newSeason, this.currentTopic);
-
-//     // Update gallery swiper manager - this handles the smooth transition internally
-//     if (this.gallerySwiperManager) {
-//       this.gallerySwiperManager.updateSeason(newSeason);
-//     }
-
-//     // No topicChange events during season switch
-//   }
-// }
 
 class GallerySystem {
   constructor() {
@@ -1921,8 +1525,23 @@ class GallerySystem {
     this.data = this.parser.parse();
     console.log(this.data);
 
-    // Set initial season from URL parameter
-    this.currentSeason = this.getInitialSeason();
+    // Get initial season from URL or HTML data attribute
+    const initialState = URLManager.getInitialState();
+    const seasonSwitch = document.querySelector(".navbar_season-switch");
+    const htmlDefaultSeason = seasonSwitch?.getAttribute("data-default-season");
+    const defaultSeason = ["summer", "winter"].includes(htmlDefaultSeason)
+      ? htmlDefaultSeason
+      : "summer";
+
+    // URL parameter takes precedence over HTML data attribute
+    const finalInitialSeason =
+      initialState.season !== "summer"
+        ? initialState.season
+        : URLManager.getParameter("season")
+        ? initialState.season
+        : defaultSeason;
+
+    this.seasonController = new SeasonController(finalInitialSeason);
     this.currentTopic = null;
 
     this.heroImageManager = null;
@@ -1934,19 +1553,13 @@ class GallerySystem {
     this.init();
   }
 
-  getInitialSeason() {
-    const urlSeason = getURLParameter("season");
-    const validSeasons = ["summer", "winter"];
-    return validSeasons.includes(urlSeason) ? urlSeason : "summer";
-  }
-
   init() {
     this.renderStaticContent();
     this.initializeComponents();
     this.setupEventListeners();
 
-    // Pass the gallery system instance to SeasonSwitchManager
-    new SeasonSwitchManager(this);
+    // Pass the season controller to SeasonSwitchManager
+    new SeasonSwitchManager(this.seasonController);
   }
 
   renderStaticContent() {
@@ -1959,48 +1572,64 @@ class GallerySystem {
     const topicContentRenderer = new TopicContentRenderer(this.data);
   }
 
-  initializeComponents() {
-    this.heroImageManager = new HeroImageManager(this.data, this.currentSeason);
-    this.galleryImageRenderer = new GalleryImageRenderer(
-      this.data,
-      this.currentSeason
-    );
-    this.galleryImageRenderer.renderImages();
-    this.quoteImageManager = new QuoteImageManager(
-      this.data,
-      this.currentSeason
-    );
-
-    // Initialize Swiper managers
-    this.topicSwiperManager = new TopicSwiperManager(this.data);
-    this.gallerySwiperManager = new GallerySwiperManager(
-      this.data,
-      this.currentSeason
-    );
-  }
-
   setupEventListeners() {
     document.addEventListener("topicChange", (e) => {
       this.currentTopic = e.detail.topic.toLowerCase();
     });
   }
 
-  switchSeason(newSeason) {
-    this.currentSeason = newSeason;
+  initializeComponents() {
+    const currentSeason = this.seasonController.getCurrentSeason();
 
-    const currentTopic = this.heroImageManager.getCurrentTopic();
+    this.heroImageManager = new HeroImageManager(
+      this.data,
+      this.seasonController
+    );
 
-    this.heroImageManager.updateSeason(newSeason, currentTopic);
-    this.galleryImageRenderer.updateSeason(newSeason);
-    this.quoteImageManager.updateSeason(newSeason, this.currentTopic);
+    this.galleryImageRenderer = new GalleryImageRenderer(
+      this.data,
+      currentSeason
+    );
+    this.galleryImageRenderer.renderImages();
 
-    // Update gallery swiper manager - this handles the smooth transition internally
-    if (this.gallerySwiperManager) {
-      this.gallerySwiperManager.updateSeason(newSeason);
-    }
+    this.quoteImageManager = new QuoteImageManager(this.data, currentSeason);
 
-    // No topicChange events during season switch
+    // Initialize Swiper managers
+    this.topicSwiperManager = new TopicSwiperManager(this.data);
+    this.gallerySwiperManager = new GallerySwiperManager(
+      this.data,
+      currentSeason
+    );
+
+    // Register components with season controller
+    this.seasonController.registerComponent(this.galleryImageRenderer);
+    this.seasonController.registerComponent(this.quoteImageManager);
+    this.seasonController.registerComponent(this.gallerySwiperManager);
+
+    // Setup season change listeners
+    this.setupSeasonChangeListeners();
   }
+
+  setupSeasonChangeListeners() {
+    this.seasonController.addEventListener("seasonChange", (e) => {
+      const { newSeason } = e.detail;
+
+      // Update components that don't auto-register
+      if (this.galleryImageRenderer) {
+        this.galleryImageRenderer.updateSeason(newSeason);
+      }
+
+      if (this.quoteImageManager) {
+        this.quoteImageManager.updateSeason(newSeason, this.currentTopic);
+      }
+
+      if (this.gallerySwiperManager) {
+        this.gallerySwiperManager.updateSeason(newSeason);
+      }
+    });
+  }
+
+  // Remove the old switchSeason method - it's now handled by SeasonController
 }
 
 /******************************************************************************
