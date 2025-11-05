@@ -743,7 +743,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
       if (formType === 'worker') {
         // Custom Worker configuration
-        const workerUrl = myForm.dataset.workerUrl || "https://hotel-booking-worker.webflowxmemberstack.workers.dev";
+        let workerUrl = myForm.dataset.workerUrl || "https://hotel-booking-worker.webflowxmemberstack.workers.dev";
+
+        // Remove trailing slash from workerUrl if present
+        workerUrl = workerUrl.replace(/\/+$/, '');
+
         const hotelCode = myForm.dataset.hotelCode || myForm.dataset.hotelId;
 
         if (!hotelCode) {
