@@ -9,7 +9,6 @@ const swiperAnimationConfig = {
     },
   },
 };
-console.log("Experience Loaded")
 /**
  * Einfaches i18n: Plurale und Texte je nach Sprache
  * - Sprache wird aus <html lang> oder optional body[data-locale] gelesen
@@ -298,7 +297,16 @@ class GalleryDataParser {
       }
 
       if (summaryEl) {
-        topic.summary = summaryEl.getAttribute("data-source-summary");
+        // Check if this is a rich text element (new behavior)
+        if (summaryEl.classList.contains("w-richtext")) {
+          // Store the entire innerHTML for rich text fields
+          topic.summary = summaryEl.innerHTML;
+          topic.isRichTextSummary = true;
+        } else {
+          // Legacy: use the attribute value
+          topic.summary = summaryEl.getAttribute("data-source-summary");
+          topic.isRichTextSummary = false;
+        }
       }
 
       if (heroTitleEl) {
@@ -348,7 +356,6 @@ class GalleryDataParser {
       result.push(topic);
     });
 
-    console.log("Parsed topic data with headings and summaries:", result);
     return (this.cachedData = result);
   }
 
@@ -467,16 +474,13 @@ class HeroImageManager {
     const topicButton = document.querySelector(`[data-topic="${topicSlug}"]`);
 
     if (topicButton) {
-      console.log(`🎯 Clicking topic button for: ${topicSlug}`);
       topicButton.click();
     } else {
       console.warn(`⚠️ Topic button not found for: ${topicSlug}`);
       // Debug: Show available buttons
       const allButtons = document.querySelectorAll("[data-topic]");
-      console.log(
         "Available topic buttons:",
         Array.from(allButtons).map((btn) => btn.getAttribute("data-topic"))
-      );
     }
   }
 
@@ -701,7 +705,6 @@ class TopicSwiperManager {
     // Update URL without page reload
     window.history.pushState({ topic }, "", url);
 
-    console.log(`📍 Updated URL parameter: topic=${topic}`);
   }
 
   setupDefaultTopic() {
@@ -1280,7 +1283,14 @@ class TopicContentRenderer {
       }
 
       if (this.summaryElement && topicData.summary) {
-        this.summaryElement.innerHTML = topicData.summary;
+        // Check if both source and target have w-richtext class (new behavior)
+        if (topicData.isRichTextSummary && this.summaryElement.classList.contains("w-richtext")) {
+          // Rich text mode: replace entire innerHTML
+          this.summaryElement.innerHTML = topicData.summary;
+        } else {
+          // Legacy mode: set innerHTML (backward compatible)
+          this.summaryElement.innerHTML = topicData.summary;
+        }
       }
 
       if (this.headerTitleElement && topicData.headerTitle) {
@@ -1288,7 +1298,6 @@ class TopicContentRenderer {
       }
 
       this.currentTopic = topicName;
-      console.log(`Updated topic content for: ${topicName}`, topicData);
     }
   }
 }
@@ -1325,7 +1334,6 @@ class GallerySystem {
   constructor() {
     this.parser = new GalleryDataParser();
     this.data = this.parser.parse();
-    console.log(this.data);
     this.currentSeason = "summer";
     this.currentTopic = null;
 
@@ -1828,35 +1836,27 @@ document.addEventListener("DOMContentLoaded", function () {
  *****************************************************************************/
 
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("🏠 ROOMS SECTION: Starting filter initialization...");
 
   const roomsSection = document.querySelector(".section_rooms");
-  console.log("🏠 ROOMS SECTION: Found section?", !!roomsSection);
 
   if (!roomsSection) {
-    console.log("❌ ROOMS SECTION: .section_rooms not found in DOM - exiting");
     return;
   }
 
   // Get filter buttons
   const filterButtons = roomsSection.querySelectorAll("[data-filter-name]");
-  console.log("🏠 ROOMS SECTION: Found filter buttons:", filterButtons.length);
 
   // Get all room slides
   const allSlides = roomsSection.querySelectorAll(".swiper-slide.is-rooms");
-  console.log("🏠 ROOMS SECTION: Found room slides:", allSlides.length);
 
   // Get swiper container
   const swiperContainer = roomsSection.querySelector(".swiper.is-rooms");
-  console.log("🏠 ROOMS SECTION: Found swiper container?", !!swiperContainer);
 
   // Get the tab pane container (legacy from old tab system)
   const tabPaneContainer = roomsSection.querySelector(".rooms_tab-pane");
-  console.log("🏠 ROOMS SECTION: Found tab pane container?", !!tabPaneContainer);
 
   // Make sure the tab pane is visible (override old tab system)
   if (tabPaneContainer) {
-    console.log("🏠 ROOMS SECTION: Ensuring tab pane is visible (removing aria-hidden)");
     tabPaneContainer.classList.remove("hide");
     tabPaneContainer.removeAttribute("aria-hidden");
     tabPaneContainer.style.display = "";
@@ -1867,7 +1867,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Hide section if no slides exist
   if (allSlides.length === 0) {
-    console.log("❌ ROOMS SECTION: NO room slides found - HIDING entire section");
     roomsSection.style.display = "none";
     return;
   }
@@ -1877,10 +1876,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Initialize Swiper
   function initSwiper() {
-    console.log("🔄 ROOMS SECTION: Initializing Swiper...");
 
     if (currentSwiper) {
-      console.log("🔄 ROOMS SECTION: Destroying existing Swiper instance");
       // Use destroy(false, true) to keep instance but clean up
       // This prevents pagination from being removed from DOM
       currentSwiper.destroy(false, true);
@@ -1888,7 +1885,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (!swiperContainer) {
-      console.log("❌ ROOMS SECTION: No swiper container found");
       return;
     }
 
@@ -1942,16 +1938,13 @@ document.addEventListener("DOMContentLoaded", () => {
       // Event to log what Swiper sees
       on: {
         init: function() {
-          console.log(`🔍 ROOMS SWIPER: Initialized with ${this.slides.length} total slides`);
           const visibleSlides = Array.from(this.slides).filter(slide =>
             slide.style.display !== 'none' && !slide.classList.contains('swiper-slide-hidden')
           );
-          console.log(`🔍 ROOMS SWIPER: ${visibleSlides.length} visible slides detected`);
         },
       },
     });
 
-    console.log("✅ ROOMS SECTION: Swiper initialized successfully");
   }
 
   // Store original parent and position for each slide
@@ -1965,10 +1958,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Filter slides by data-filter-name
   function filterSlides(filterName) {
-    console.log(`\n🔍 ROOMS SECTION: Filtering slides by: "${filterName}"`);
 
     if (!currentSwiper) {
-      console.log("❌ ROOMS SECTION: No Swiper instance found");
       return 0;
     }
 
@@ -1992,7 +1983,6 @@ document.addEventListener("DOMContentLoaded", () => {
         slideFilterName = slide.getAttribute("data-filter-name");
       }
 
-      console.log(`   📋 Slide [${index}]: data-filter-name="${slideFilterName}"`);
 
       // Show all slides if filter is "*" or "all"
       if (filterName === "*" || filterName === "all" || slideFilterName === filterName) {
@@ -2002,24 +1992,18 @@ document.addEventListener("DOMContentLoaded", () => {
         slide.removeAttribute("aria-hidden");
         visibleSlides.push(slide);
         visibleCount++;
-        console.log(`   ✅ Slide [${index}]: WILL BE VISIBLE`);
       } else {
-        console.log(`   ❌ Slide [${index}]: WILL BE HIDDEN (removed from DOM)`);
       }
     });
 
-    console.log(`\n📊 ROOMS SECTION: ${visibleCount} visible slides after filtering`);
 
     // Remove all slides from Swiper
-    console.log("🔄 ROOMS SECTION: Removing all slides from Swiper...");
     currentSwiper.removeAllSlides();
 
     // Append only visible slides back to Swiper
-    console.log(`🔄 ROOMS SECTION: Adding ${visibleCount} filtered slides to Swiper...`);
     currentSwiper.appendSlide(visibleSlides);
 
     // Update Swiper to refresh layout and pagination
-    console.log("🔄 ROOMS SECTION: Updating Swiper layout...");
     currentSwiper.update();
 
     // Slide to first slide
@@ -2030,7 +2014,6 @@ document.addEventListener("DOMContentLoaded", () => {
       if (swiperContainer) {
         swiperContainer.style.opacity = '1';
       }
-      console.log("✅ ROOMS SECTION: Filter applied successfully");
     }, 10);
 
     return visibleCount;
@@ -2038,7 +2021,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Set active filter button
   function setActiveFilter(activeButton) {
-    console.log("🎨 ROOMS SECTION: Setting active filter button");
 
     // Remove active class from all buttons
     filterButtons.forEach((btn) => {
@@ -2061,7 +2043,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Check if filter buttons exist and count rooms per filter
   function checkFilters() {
-    console.log("🔍 ROOMS SECTION: Checking available filters...");
 
     const filterCounts = {};
 
@@ -2081,7 +2062,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
-    console.log("📊 ROOMS SECTION: Filter counts:", filterCounts);
 
     // Hide filter buttons that have no matching rooms (except "*" which shows all)
     filterButtons.forEach((btn) => {
@@ -2091,15 +2071,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Never hide the "*" filter as it shows all items
       if (filterName === "*") {
-        console.log(`   ⭐ Keeping filter button: "*" (shows all rooms)`);
         if (parentItem) {
           parentItem.style.display = "";
         }
       } else if (count === 0 && parentItem) {
-        console.log(`   ❌ Hiding filter button: "${filterName}" (0 rooms)`);
         parentItem.style.display = "none";
       } else {
-        console.log(`   ✅ Showing filter button: "${filterName}" (${count} rooms)`);
         if (parentItem) {
           parentItem.style.display = "";
         }
@@ -2113,7 +2090,6 @@ document.addEventListener("DOMContentLoaded", () => {
   filterButtons.forEach((button) => {
     button.addEventListener("click", () => {
       const filterName = button.getAttribute("data-filter-name");
-      console.log(`\n🖱️  ROOMS SECTION: Filter button clicked: "${filterName}"`);
 
       currentFilter = filterName;
       setActiveFilter(button);
@@ -2122,7 +2098,6 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Initialize
-  console.log("\n🚀 ROOMS SECTION: Initializing...");
 
   // Check and hide empty filters
   checkFilters();
@@ -2142,24 +2117,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (starFilter) {
     defaultFilter = starFilter;
-    console.log(`⭐ ROOMS SECTION: Using "*" filter as default (shows all rooms)`);
   } else if (visibleFilters.length > 0) {
     defaultFilter = visibleFilters[0];
-    console.log(`✅ ROOMS SECTION: Using first visible filter as default`);
   }
 
   if (defaultFilter) {
     const filterName = defaultFilter.getAttribute("data-filter-name");
-    console.log(`✅ ROOMS SECTION: Setting default filter: "${filterName}"`);
     currentFilter = filterName;
     setActiveFilter(defaultFilter);
     filterSlides(filterName);
   } else {
-    console.log("⚠️  ROOMS SECTION: No visible filters, showing all rooms");
     filterSlides("all");
   }
 
-  console.log("\n✅ ROOMS SECTION: Filter system initialized successfully!");
 });
 
 /******************************************************************************
@@ -2167,35 +2137,27 @@ document.addEventListener("DOMContentLoaded", () => {
  *****************************************************************************/
 
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("🎁 OFFERS SECTION: Starting filter initialization...");
 
   const offersSection = document.querySelector(".section_offers");
-  console.log("🎁 OFFERS SECTION: Found section?", !!offersSection);
 
   if (!offersSection) {
-    console.log("❌ OFFERS SECTION: .section_offers not found in DOM - exiting");
     return;
   }
 
   // Get filter buttons
   const filterButtons = offersSection.querySelectorAll("[data-filter-name]");
-  console.log("🎁 OFFERS SECTION: Found filter buttons:", filterButtons.length);
 
   // Get all offer slides
   const allSlides = offersSection.querySelectorAll(".swiper-slide.is-offers");
-  console.log("🎁 OFFERS SECTION: Found offer slides:", allSlides.length);
 
   // Get swiper container
   const swiperContainer = offersSection.querySelector(".swiper.is-offers");
-  console.log("🎁 OFFERS SECTION: Found swiper container?", !!swiperContainer);
 
   // Get the tab pane container (legacy from old tab system)
   const tabPaneContainer = offersSection.querySelector(".offers_tab-pane");
-  console.log("🎁 OFFERS SECTION: Found tab pane container?", !!tabPaneContainer);
 
   // Make sure the tab pane is visible (override old tab system)
   if (tabPaneContainer) {
-    console.log("🎁 OFFERS SECTION: Ensuring tab pane is visible (removing aria-hidden)");
     tabPaneContainer.classList.remove("hide");
     tabPaneContainer.removeAttribute("aria-hidden");
     tabPaneContainer.style.display = "";
@@ -2206,7 +2168,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Hide section if no slides exist
   if (allSlides.length === 0) {
-    console.log("❌ OFFERS SECTION: NO offer slides found - HIDING entire section");
     offersSection.style.display = "none";
     return;
   }
@@ -2216,10 +2177,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Initialize Swiper
   function initSwiper() {
-    console.log("🔄 OFFERS SECTION: Initializing Swiper...");
 
     if (currentSwiper) {
-      console.log("🔄 OFFERS SECTION: Destroying existing Swiper instance");
       // Use destroy(false, true) to keep instance but clean up
       // This prevents pagination from being removed from DOM
       currentSwiper.destroy(false, true);
@@ -2227,7 +2186,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (!swiperContainer) {
-      console.log("❌ OFFERS SECTION: No swiper container found");
       return;
     }
 
@@ -2281,16 +2239,13 @@ document.addEventListener("DOMContentLoaded", () => {
       // Event to log what Swiper sees
       on: {
         init: function() {
-          console.log(`🔍 OFFERS SWIPER: Initialized with ${this.slides.length} total slides`);
           const visibleSlides = Array.from(this.slides).filter(slide =>
             slide.style.display !== 'none' && !slide.classList.contains('swiper-slide-hidden')
           );
-          console.log(`🔍 OFFERS SWIPER: ${visibleSlides.length} visible slides detected`);
         },
       },
     });
 
-    console.log("✅ OFFERS SECTION: Swiper initialized successfully");
   }
 
   // Store original parent and position for each slide
@@ -2304,10 +2259,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Filter slides by data-filter-name
   function filterSlides(filterName) {
-    console.log(`\n🔍 OFFERS SECTION: Filtering slides by: "${filterName}"`);
 
     if (!currentSwiper) {
-      console.log("❌ OFFERS SECTION: No Swiper instance found");
       return 0;
     }
 
@@ -2331,7 +2284,6 @@ document.addEventListener("DOMContentLoaded", () => {
         slideFilterName = slide.getAttribute("data-filter-name");
       }
 
-      console.log(`   📋 Slide [${index}]: data-filter-name="${slideFilterName}"`);
 
       // Show all slides if filter is "*" or "all"
       if (filterName === "*" || filterName === "all" || slideFilterName === filterName) {
@@ -2341,24 +2293,18 @@ document.addEventListener("DOMContentLoaded", () => {
         slide.removeAttribute("aria-hidden");
         visibleSlides.push(slide);
         visibleCount++;
-        console.log(`   ✅ Slide [${index}]: WILL BE VISIBLE`);
       } else {
-        console.log(`   ❌ Slide [${index}]: WILL BE HIDDEN (removed from DOM)`);
       }
     });
 
-    console.log(`\n📊 OFFERS SECTION: ${visibleCount} visible slides after filtering`);
 
     // Remove all slides from Swiper
-    console.log("🔄 OFFERS SECTION: Removing all slides from Swiper...");
     currentSwiper.removeAllSlides();
 
     // Append only visible slides back to Swiper
-    console.log(`�� OFFERS SECTION: Adding ${visibleCount} filtered slides to Swiper...`);
     currentSwiper.appendSlide(visibleSlides);
 
     // Update Swiper to refresh layout and pagination
-    console.log("🔄 OFFERS SECTION: Updating Swiper layout...");
     currentSwiper.update();
 
     // Slide to first slide
@@ -2369,7 +2315,6 @@ document.addEventListener("DOMContentLoaded", () => {
       if (swiperContainer) {
         swiperContainer.style.opacity = '1';
       }
-      console.log("✅ OFFERS SECTION: Filter applied successfully");
     }, 10);
 
     return visibleCount;
@@ -2377,7 +2322,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Set active filter button
   function setActiveFilter(activeButton) {
-    console.log("🎨 OFFERS SECTION: Setting active filter button");
 
     // Remove active class from all buttons
     filterButtons.forEach((btn) => {
@@ -2400,7 +2344,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Check if filter buttons exist and count offers per filter
   function checkFilters() {
-    console.log("🔍 OFFERS SECTION: Checking available filters...");
 
     const filterCounts = {};
 
@@ -2420,7 +2363,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
-    console.log("📊 OFFERS SECTION: Filter counts:", filterCounts);
 
     // Hide filter buttons that have no matching offers (except "*" which shows all)
     filterButtons.forEach((btn) => {
@@ -2430,15 +2372,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Never hide the "*" filter as it shows all items
       if (filterName === "*") {
-        console.log(`   ⭐ Keeping filter button: "*" (shows all offers)`);
         if (parentItem) {
           parentItem.style.display = "";
         }
       } else if (count === 0 && parentItem) {
-        console.log(`   ❌ Hiding filter button: "${filterName}" (0 offers)`);
         parentItem.style.display = "none";
       } else {
-        console.log(`   ✅ Showing filter button: "${filterName}" (${count} offers)`);
         if (parentItem) {
           parentItem.style.display = "";
         }
@@ -2452,7 +2391,6 @@ document.addEventListener("DOMContentLoaded", () => {
   filterButtons.forEach((button) => {
     button.addEventListener("click", () => {
       const filterName = button.getAttribute("data-filter-name");
-      console.log(`\n🖱️  OFFERS SECTION: Filter button clicked: "${filterName}"`);
 
       currentFilter = filterName;
       setActiveFilter(button);
@@ -2461,7 +2399,6 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Initialize
-  console.log("\n🚀 OFFERS SECTION: Initializing...");
 
   // Check and hide empty filters
   checkFilters();
@@ -2481,24 +2418,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (starFilter) {
     defaultFilter = starFilter;
-    console.log(`⭐ OFFERS SECTION: Using "*" filter as default (shows all offers)`);
   } else if (visibleFilters.length > 0) {
     defaultFilter = visibleFilters[0];
-    console.log(`✅ OFFERS SECTION: Using first visible filter as default`);
   }
 
   if (defaultFilter) {
     const filterName = defaultFilter.getAttribute("data-filter-name");
-    console.log(`✅ OFFERS SECTION: Setting default filter: "${filterName}"`);
     currentFilter = filterName;
     setActiveFilter(defaultFilter);
     filterSlides(filterName);
   } else {
-    console.log("⚠️  OFFERS SECTION: No visible filters, showing all offers");
     filterSlides("all");
   }
 
-  console.log("\n✅ OFFERS SECTION: Filter system initialized successfully!");
 });
 
 /******************************************************************************
