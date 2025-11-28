@@ -293,7 +293,16 @@ class GalleryDataParser {
       const heroTitleEl = item.querySelector("[data-source-header-title]");
 
       if (headingEl) {
-        topic.heading = headingEl.getAttribute("data-source-heading");
+        // Check if this is a rich text element (new behavior)
+        if (headingEl.classList.contains("w-richtext")) {
+          // Store the entire innerHTML for rich text fields
+          topic.heading = headingEl.innerHTML;
+          topic.isRichTextHeading = true;
+        } else {
+          // Legacy: use the attribute value
+          topic.heading = headingEl.getAttribute("data-source-heading");
+          topic.isRichTextHeading = false;
+        }
       }
 
       if (summaryEl) {
@@ -1279,7 +1288,14 @@ class TopicContentRenderer {
 
     if (topicData) {
       if (this.headingElement && topicData.heading) {
-        this.headingElement.innerHTML = topicData.heading;
+        // Check if both source and target have w-richtext class (new behavior)
+        if (topicData.isRichTextHeading && this.headingElement.classList.contains("w-richtext")) {
+          // Rich text mode: replace entire innerHTML
+          this.headingElement.innerHTML = topicData.heading;
+        } else {
+          // Legacy mode: set innerHTML (backward compatible)
+          this.headingElement.innerHTML = topicData.heading;
+        }
       }
 
       if (this.summaryElement && topicData.summary) {
