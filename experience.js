@@ -252,7 +252,7 @@ function createTopicSlug(topicName) {
       .replace(/ & /g, "-")
       .replace(/\(/g, "") // Remove opening parentheses
       .replace(/\)/g, "") // Remove closing parentheses
-      .replace(/[^\w\s-]/g, "") // Remove special characters except spaces and dashes
+      .replace(/[^\p{L}\p{N}\s-]/gu, "") // Remove special characters except letters (including accented), numbers, spaces and dashes
       .replace(/\s+/g, "-") // Replace spaces with dashes
       .replace(/-+/g, "-") // Replace multiple dashes with single dash
       .replace(/^-|-$/g, "")
@@ -281,7 +281,7 @@ class GalleryDataParser {
     topicItems.forEach((item) => {
       const topic = {
         topicname: createTopicSlug(item.getAttribute("data-topic-name")),
-        galleryname: createTopicSlug(item.getAttribute("data-gallery-name")),
+        galleryname: item.getAttribute("data-gallery-name"),
         images: {},
         heroImages: {},
         quoteImages: {},
@@ -1246,7 +1246,7 @@ class TopicRenderer {
       button.setAttribute("data-topic", topicSlug);
 
       if (textElement) {
-        textElement.textContent = topic.topicname;
+        textElement.textContent = topic.galleryname;
       }
 
       this.container.append(clone);
