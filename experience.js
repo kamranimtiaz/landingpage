@@ -1311,9 +1311,40 @@ class SeasonSwitchManager {
 
   init() {
     if (!this.seasonSwitch) return;
+
+    this.setInitialSeasonFromURL();
     this.seasonSwitch.addEventListener(
       "click",
       this.handleSeasonSwitch.bind(this)
+    );
+  }
+
+  setInitialSeasonFromURL() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlSeason = urlParams.get("season");
+    const dataDefault = this.seasonSwitch.getAttribute("data-default-season");
+    const defaultSeason = ["summer", "winter"].includes(dataDefault)
+      ? dataDefault
+      : "summer";
+
+    // URL parameter has precedence, otherwise use data-default-season
+    const initialSeason = (urlSeason && ["summer", "winter"].includes(urlSeason))
+      ? urlSeason
+      : defaultSeason;
+
+    // Update UI to match initial season
+    const isSummer = initialSeason === "summer";
+    this.seasonSwitch.setAttribute("aria-checked", isSummer ? "true" : "false");
+
+    // Sync with GallerySystem if it differs
+    if (this.gallerySystem.currentSeason !== initialSeason) {
+      this.gallerySystem.currentSeason = initialSeason;
+    }
+
+    console.log(
+      `🌍 Initial season: ${initialSeason} (URL: ${
+        urlSeason || "none"
+      }, HTML default: ${dataDefault})`
     );
   }
 
@@ -1334,7 +1365,31 @@ class GallerySystem {
   constructor() {
     this.parser = new GalleryDataParser();
     this.data = this.parser.parse();
-    this.currentSeason = "summer";
+
+    // Determine the actual initial season BEFORE creating components
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlSeason = urlParams.get("season");
+    const seasonSwitch = document.querySelector(".navbar_season-switch");
+    const htmlDefaultSeason = seasonSwitch?.getAttribute("data-default-season");
+
+    // Validate HTML default season
+    const validSeasons = ["summer", "winter"];
+    const fallbackSeason = "summer"; // Only used as absolute fallback
+
+    let finalInitialSeason;
+
+    // Priority order: URL parameter > HTML data attribute > fallback
+    if (urlSeason && validSeasons.includes(urlSeason)) {
+      finalInitialSeason = urlSeason;
+    } else if (htmlDefaultSeason && validSeasons.includes(htmlDefaultSeason)) {
+      finalInitialSeason = htmlDefaultSeason;
+    } else {
+      finalInitialSeason = fallbackSeason;
+    }
+
+    console.log(`🌍 Determined initial season: ${finalInitialSeason}`);
+
+    this.currentSeason = finalInitialSeason;
     this.currentTopic = null;
 
     this.heroImageManager = null;
