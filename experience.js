@@ -1150,8 +1150,9 @@ class QuoteImageManager {
     this.season = newSeason;
     this.topicToImageMap = this.buildImageMap();
 
-    if (currentTopic && this.topicToImageMap[currentTopic.toLowerCase()]) {
-      this.loadQuoteImage(currentTopic.toLowerCase());
+    const topicToCheck = currentTopic || this.currentTopic;
+    if (topicToCheck && this.topicToImageMap[topicToCheck.toLowerCase()]) {
+      this.loadQuoteImage(topicToCheck.toLowerCase());
     }
   }
 
