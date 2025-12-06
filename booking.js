@@ -739,7 +739,20 @@ document.addEventListener("DOMContentLoaded", function () {
 
       // Configuration based on form type
       let submitEndpoint = null;
-      const thankYouURL = window.location.origin + "/danke";
+
+      // Build thank you URL based on current path
+      const currentPath = window.location.pathname;
+      const pathSegments = currentPath.split('/').filter(segment => segment.length > 0);
+      let thankYouURL;
+
+      // Check if first segment is a language code (en, de, fr, it)
+      if (pathSegments.length > 0 && ['en', 'de', 'fr', 'it'].includes(pathSegments[0])) {
+        // Use language-specific path: /en/danke, /fr/danke, etc.
+        thankYouURL = window.location.origin + '/' + pathSegments[0] + '/danke';
+      } else {
+        // Default to /danke
+        thankYouURL = window.location.origin + '/danke';
+      }
 
       if (formType === 'worker') {
         // Custom Worker configuration
@@ -892,7 +905,7 @@ document.addEventListener("DOMContentLoaded", function () {
         // Transform to English with normalized values
         const jsonData = {
           // Language (keep as is or detect from page)
-          language: rawData.Sprache || rawData.language || "de",
+          language: rawData.Sprache || rawData.language || (typeof Locale !== 'undefined' ? Locale.get() : (document.documentElement.getAttribute("lang") || "de").toLowerCase().split("-")[0]),
 
           // Date period (already in ISO format from hidden field)
           period: rawData.period || "",
@@ -1022,7 +1035,7 @@ document.addEventListener("DOMContentLoaded", function () {
             // Redirect after a short delay
             setTimeout(() => {
               window.location.href = thankYouURL;
-            }, 500);
+            }, 200);
           })
           .catch((error) => {
             console.error("=== BOOKING ERROR ===");
